@@ -1,22 +1,23 @@
-use std::time::SystemTime;
-
-use dayquest_bot::{config, service};
+use dayquest_bot::{config::{self, Config}, handler};
+use serenity::{all::GatewayIntents, Client};
 
 #[tokio::main]
 async fn main() {
-    let start_time = SystemTime::now();
     println!("Running DayQuest Discord Bot!");
-
     let config = config::load();
-    service::login(config).await;
+    start(create_client(config).await).await;
+}
 
-    let booting_time = format!(
-        "{:.2}",
-        SystemTime::now()
-            .duration_since(start_time)
-            .unwrap()
-            .as_secs_f32()
-    );
 
-    println!("Started, took {booting_time} s");
+pub async fn create_client(config: Config) -> Client {
+    let intents = GatewayIntents::all();
+
+    Client::builder(&config.token, intents)
+        .event_handler(handler::Handler)
+        .await
+        .expect("Err creating client")
+}
+
+pub async fn start(mut client: Client) {
+    client.start().await.expect("Failed to start discord bot");
 }

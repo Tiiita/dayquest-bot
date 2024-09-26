@@ -4,12 +4,12 @@ use figment::{providers::{Format, Json}, Figment};
 use serde::Deserialize;
 
 pub fn load() -> Config {
-    println!("Loading config..");
     let config = Figment::new()
     .merge(Json::file("config.json"));
-    println!("Config loaded, done!");
 
-    config.extract().expect("Failed to load config..")
+    let config =  config.extract().expect("Failed to load config..");
+    println!("Loaded config");
+    config
 }
 
 #[derive(Deserialize)]
