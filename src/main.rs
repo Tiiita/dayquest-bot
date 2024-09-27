@@ -1,4 +1,4 @@
-use dayquest_bot::{config::{self, Config}, handler};
+use dayquest_bot::{config::{self}, handler};
 use serenity::{all::GatewayIntents, Client};
 
 #[tokio::main]

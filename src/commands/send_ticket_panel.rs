@@ -7,6 +7,8 @@ use serenity::{
 };
 
 use super::DISCORD_BACKGROUND_COLOR;
+
+pub const NAME: &str = "send-ticket-panel";
 pub async fn run(ctx: &Context, interaction: &CommandInteraction) -> Result<(), Error> {
     let embed: CreateEmbed = CreateEmbed::new()
     .title("Erstelle ein Ticket")
@@ -45,5 +47,7 @@ pub async fn run(ctx: &Context, interaction: &CommandInteraction) -> Result<(), 
 }
 
 pub async fn register() -> CreateCommand {
-    CreateCommand::new("send-ticket-panel").default_member_permissions(Permissions::ADMINISTRATOR)
+    CreateCommand::new(NAME)
+    .description("Sends the ticket panel")
+    .default_member_permissions(Permissions::ADMINISTRATOR)
 }
