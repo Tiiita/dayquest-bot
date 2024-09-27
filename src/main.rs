@@ -11,5 +11,5 @@ async fn main() {
         .event_handler(handler::Handler)
         .await
         .expect("Err creating client")
-        .start();
+        .start().await.expect("Failed to start client");
 }
