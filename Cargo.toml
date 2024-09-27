@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+colored = "2.1.0"
 figment = { version = "0.10.19", features = ["json", "serde_json"] }
 serde = "1.0.210"
 serenity = "0.12.2"

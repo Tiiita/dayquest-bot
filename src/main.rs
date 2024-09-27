@@ -1,9 +1,10 @@
+use colored::Colorize;
 use dayquest_bot::{config::{self}, handler};
 use serenity::{all::GatewayIntents, Client};
 
 #[tokio::main]
 async fn main() {
-    println!("Running DayQuest Discord Bot!");
+    println!("{}", "Running DayQuest Discord Bot!".green());
     let config = config::load();
     let intents = GatewayIntents::all();
 

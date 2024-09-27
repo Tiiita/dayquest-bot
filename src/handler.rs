@@ -13,7 +13,6 @@ impl EventHandler for Handler {
         for ele in ctx.cache.guilds() {
             commands::commands::register_all(&ctx, &ele).await;
         }
-        println!("Sucessfully connected to bot!\n");
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
