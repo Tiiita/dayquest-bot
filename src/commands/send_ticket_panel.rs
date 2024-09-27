@@ -1,10 +1,13 @@
 use serenity::{
     all::{
-        CommandInteraction, Context, CreateActionRow, CreateCommand, CreateEmbed, CreateMessage,
-        CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, Permissions,
+        CommandInteraction, Context, CreateActionRow, CreateCommand, CreateEmbed,
+        CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind,
+        CreateSelectMenuOption, Permissions,
     },
     Error,
 };
+
+use crate::commands::commands;
 
 use super::DISCORD_BACKGROUND_COLOR;
 
@@ -29,18 +32,13 @@ pub async fn run(ctx: &Context, interaction: &CommandInteraction) -> Result<(), 
         .placeholder("Wähle eine Kategorie"),
     );
 
-    if let Err(err) = interaction
-        .channel_id
-        .send_message(
-            &ctx.http,
-            CreateMessage::new()
-                .embed(embed)
-                .components(vec![selection_menu]),
-        )
-        .await
-    {
-        return Err(err);
-    }
+    commands::respond(
+        ctx,
+        interaction,
+        CreateInteractionResponseMessage::new()
+            .add_embed(embed)
+            .components(vec![selection_menu]),
+    ).await;
 
     println!("Sent ticket panel in channel: {}", interaction.channel_id);
     Ok(())
@@ -48,6 +46,6 @@ pub async fn run(ctx: &Context, interaction: &CommandInteraction) -> Result<(), 
 
 pub async fn register() -> CreateCommand {
     CreateCommand::new(NAME)
-    .description("Sends the ticket panel")
-    .default_member_permissions(Permissions::ADMINISTRATOR)
+        .description("Sends the ticket panel")
+        .default_member_permissions(Permissions::ADMINISTRATOR)
 }
