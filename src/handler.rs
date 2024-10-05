@@ -3,7 +3,7 @@ use serenity::{
     async_trait,
 };
 
-use crate::commands::{self};
+use crate::{commands::{self}, ticket};
 
 pub struct Handler;
 
@@ -16,8 +16,18 @@ impl EventHandler for Handler {
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if let Interaction::Command(cmd) = interaction {
-            commands::commands::handle_cmd(&cmd, &ctx).await;
+        match interaction {
+            Interaction::Command(cmd) => commands::commands::handle_cmd(&cmd, &ctx).await,
+            Interaction::Component(component) => {
+                let id = component.data.custom_id.as_str();
+                match id {
+                    "select_ticket_type" => {
+                        ticket::hande_ticket_selection(ctx, component).await;
+                    }
+                    _ => {},
+                }
+            }
+            _ => {},
         }
     }
 }

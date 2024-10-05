@@ -7,9 +7,7 @@ use serenity::{
     Error,
 };
 
-use crate::commands::commands;
-
-use super::DISCORD_BACKGROUND_COLOR;
+use crate::{commands::commands, DISCORD_BACKGROUND_COLOR};
 
 pub const NAME: &str = "send-ticket-panel";
 pub async fn run(ctx: &Context, interaction: &CommandInteraction) -> Result<(), Error> {
@@ -23,9 +21,9 @@ pub async fn run(ctx: &Context, interaction: &CommandInteraction) -> Result<(), 
             "select_ticket_type",
             CreateSelectMenuKind::String {
                 options: vec![
-                    CreateSelectMenuOption::new("🤙Support", "support_category"),
-                    CreateSelectMenuOption::new("📕Bewerbung", "application_category"),
-                    CreateSelectMenuOption::new("📍Frage", "question_category"),
+                    CreateSelectMenuOption::new("🤙 Support", "support"),
+                    CreateSelectMenuOption::new("📕 Bewerbung", "application"),
+                    CreateSelectMenuOption::new("📍 Frage", "question"),
                 ],
             },
         )

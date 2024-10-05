@@ -8,7 +8,6 @@ pub fn load() -> Config {
     .merge(Json::file("config.json"));
 
     let config =  config.extract().expect("Failed to load config..");
-    println!("Loaded config sucessfully");
     config
 }
 
