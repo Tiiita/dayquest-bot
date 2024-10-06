@@ -23,7 +23,8 @@ impl EventHandler for Handler {
                 match id {
                     TICKET_CREATION_TYPE_SELECTION => {
                         ticket::hande_ticket_selection(ctx, component).await;
-                    }
+                    },
+                    
                     _ => {},
                 }
             }

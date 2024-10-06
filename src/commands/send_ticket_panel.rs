@@ -1,13 +1,12 @@
 use serenity::{
     all::{
-        CommandInteraction, Context, CreateActionRow, CreateCommand, CreateEmbed,
-        CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind,
-        CreateSelectMenuOption, Permissions,
+        CommandInteraction, Context, CreateCommand, CreateEmbed,
+        CreateInteractionResponseMessage, Permissions,
     },
     Error,
 };
 
-use crate::{commands, config::{DISCORD_BACKGROUND_COLOR, TICKET_CREATION_TYPE_SELECTION}};
+use crate::{commands, config::DISCORD_BACKGROUND_COLOR, ticket};
 
 pub const NAME: &str = "send-ticket-panel";
 pub async fn run(ctx: &Context, interaction: &CommandInteraction) -> Result<(), Error> {
@@ -16,26 +15,12 @@ pub async fn run(ctx: &Context, interaction: &CommandInteraction) -> Result<(), 
     .color(DISCORD_BACKGROUND_COLOR)
     .description("Wähle eine Ticket Kategorie aus, um ein Ticket zu erstellen, sodass du Kontakt zum Staff aufnimmst!");
 
-    let selection_menu = CreateActionRow::SelectMenu(
-        CreateSelectMenu::new(
-            TICKET_CREATION_TYPE_SELECTION,
-            CreateSelectMenuKind::String {
-                options: vec![
-                    CreateSelectMenuOption::new("🤙 Support", "support"),
-                    CreateSelectMenuOption::new("📕 Bewerbung", "application"),
-                    CreateSelectMenuOption::new("📍 Frage", "question"),
-                ],
-            },
-        )
-        .placeholder("Wähle eine Kategorie"),
-    );
-
     commands::respond(
         ctx,
         interaction,
         CreateInteractionResponseMessage::new()
             .add_embed(embed)
-            .components(vec![selection_menu]),
+            .components(vec![ticket::get_ticket_selection_menu()]),
     ).await;
 
     println!("Sent ticket panel in channel: {}", interaction.channel_id);
