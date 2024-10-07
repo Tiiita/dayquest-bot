@@ -9,7 +9,7 @@ async fn main() {
     let intents = GatewayIntents::all();
 
     Client::builder(&config.token, intents)
-        .event_handler(handler::Handler)
+        .event_handler(handler::Handler { config })
         .await
         .expect("Err creating client")
         .start().await.expect("Failed to start client");

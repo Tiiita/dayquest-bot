@@ -1,9 +1,13 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use figment::{providers::{Format, Json}, Figment};
+use figment::{
+    providers::{Format, Json},
+    Figment,
+};
 use serde::Deserialize;
 use serenity::all::Color;
 
+use crate::ticket::{self, Ticket};
 
 pub const DISCORD_BACKGROUND_COLOR: Color = Color::from_rgb(43, 45, 49);
 
@@ -15,11 +19,9 @@ pub const TICKET_SELECT_BACKEND: &str = "select_beta_backend";
 pub const TICKET_CREATION_TYPE_SELECTION: &str = "ticket_selection_type";
 
 pub fn load() -> Config {
-    let config = Figment::new()
-    .merge(Json::file("config.json"));
+    let config = Figment::new().merge(Json::file("config.json"));
 
-    let config =  config.extract().expect("Failed to load config..");
-    config
+    config.extract().expect("Failed to load config..")
 }
 
 #[derive(Deserialize)]
@@ -32,7 +34,15 @@ pub struct Config {
     #[serde(rename = "modRole")]
     pub mod_role: u64,
 
+    #[serde(rename = "ticketRole")]
+    pub ticket_role: u64,
+
     #[serde(rename = "rolesChannel")]
     pub roles_channel: u64,
+
+    #[serde(rename = "openTickets")]
+    //                   channel - creator
+    pub open_tickets: HashMap<u64, u64>,
+
     pub roles: HashMap<String, u64>,
 }

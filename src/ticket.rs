@@ -1,20 +1,101 @@
 use serenity::all::{
-    ButtonStyle, Channel, ChannelId, ComponentInteraction, ComponentInteractionDataKind, Context,
-    CreateActionRow, CreateButton, CreateChannel, CreateEmbed, CreateInteractionResponse,
-    CreateInteractionResponseMessage, CreateMessage, CreateSelectMenu, CreateSelectMenuKind,
-    CreateSelectMenuOption, GuildChannel, SelectMenu,
-};
+        ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionDataKind, Context,
+        CreateActionRow, CreateAttachment, CreateButton, CreateChannel, CreateEmbed,
+        CreateInteractionResponse, CreateInteractionResponseMessage, CreateMessage,
+        CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, GuildChannel, ReactionType,
+        UserId,
+    };
 
 use crate::config::{
-    DISCORD_BACKGROUND_COLOR, TICKET_CLOSE_BUTTON, TICKET_CREATION_TYPE_SELECTION,
+    Config, DISCORD_BACKGROUND_COLOR, TICKET_CLOSE_BUTTON, TICKET_CREATION_TYPE_SELECTION,
     TICKET_SELECT_BACKEND, TICKET_SELECT_BETA, TICKET_SELECT_FRONTEND, TICKET_SELECT_MOD,
 };
 
-pub async fn hande_ticket_selection(ctx: Context, component: ComponentInteraction) {
-    if let ComponentInteractionDataKind::StringSelect { ref values } = component.data.kind {
+pub async fn handle_ticket_button_interaction(
+    ctx: &Context,
+    interaction: &ComponentInteraction,
+    config: &Config,
+) {
+    if let ComponentInteractionDataKind::Button = interaction.data.kind {
+        let button_id = interaction.data.custom_id.as_str();
+
+        let mut selected_application = None;
+        match button_id {
+            TICKET_SELECT_BACKEND => selected_application = Some("Backend Developer"),
+            TICKET_SELECT_BETA => selected_application = Some("Beta"),
+            TICKET_SELECT_FRONTEND => selected_application = Some("Frontend Developer"),
+            TICKET_SELECT_MOD => selected_application = Some("Moderator / Supporter"),
+            _ => {}
+        }
+
+        if let Some(selected) = selected_application {
+            if let Err(why) = interaction
+                .create_response(
+                    &ctx.http,
+                    CreateInteractionResponse::Message(
+                        CreateInteractionResponseMessage::new()
+                            .content(format!("Ausgewählter Bewerbungstyp: **{selected}**")),
+                    ),
+                )
+                .await
+            {
+                eprintln!(
+                    "Failed to send the selected application type message, Err: {:?}",
+                    why
+                );
+            }
+
+            return;
+        }
+
+        let channel_id = &interaction.channel_id.get();
+
+        if !config.open_tickets.contains_key(channel_id)
+            || config.open_tickets.get(channel_id) == None
+        {
+            eprintln!("Failed to find channel (in config) with id: {channel_id}");
+        }
+
+        let creator = *config.open_tickets.get(channel_id).unwrap();
+        if let Err(why) = ctx.http.get_user(UserId::new(creator)).await {
+            eprintln!("Failed to look up user that created the ticket, Err: {why}");
+            return;
+        }
+
+        let transcript = create_transcript(&interaction.channel_id).await;
+        let creator = ctx.http.get_user(UserId::new(creator)).await.unwrap();
+        if let Err(why) = creator.direct_message(&ctx.http, CreateMessage::new()
+                .content("Dein DayQuest Ticket wurde geschlossen. Hier das Transcript. **Wir empfehlen das zu lesen, da dort noch ungesehene Nachrichten vorkommen können**")
+                .add_file(CreateAttachment::bytes(transcript, "dein-transcript.txt")))
+                .await
+        {
+            eprintln!("Failed to send ticket close msg to user: {}, Err: {:?}", creator.id.get(), why);
+        }
+
+        if let Err(why) = interaction.channel_id.delete(&ctx.http).await {
+            eprintln!("Failed to delete ticket channel, err: {:?}", why);
+            return;
+        }
+
+        println!(
+            "Closed ticket: {}",
+            interaction.channel.clone().unwrap().name.unwrap()
+        );
+    }
+}
+
+pub async fn handle_ticket_selection(
+    ctx: &Context,
+    interaction: &ComponentInteraction,
+    config: &Config,
+) {
+    if interaction.data.custom_id.as_str() != TICKET_CREATION_TYPE_SELECTION {
+        return;
+    }
+    if let ComponentInteractionDataKind::StringSelect { ref values } = interaction.data.kind {
         let selected = values.get(0).unwrap().as_str();
 
-        let id = component.user.id.get();
+        let id = interaction.user.id.get();
         let mut ticket = match selected {
             "application" => Ticket::new(id, TicketType::Application),
             "support" => Ticket::new(id, TicketType::Support),
@@ -22,17 +103,17 @@ pub async fn hande_ticket_selection(ctx: Context, component: ComponentInteractio
             _ => {
                 eprintln!(
                     "{} selected unknown ticket type: {selected}",
-                    component.user.id
+                    interaction.user.id
                 );
 
                 return;
             }
         };
 
-        ticket.create(&ctx, &selected, &component).await;
-        component
+        ticket.create(&ctx, &selected, &interaction, &config).await;
+        interaction
             .create_response(
-                ctx.http,
+                &ctx.http,
                 CreateInteractionResponse::Message(
                     CreateInteractionResponseMessage::new()
                         .ephemeral(true)
@@ -68,6 +149,7 @@ impl Ticket {
         ctx: &Context,
         selected: &str,
         interaction: &ComponentInteraction,
+        config: &Config,
     ) {
         let guild = interaction.guild_id.unwrap();
         let channel_name = selected.to_owned() + "-" + interaction.user.name.as_str();
@@ -79,23 +161,27 @@ impl Ticket {
         {
             Ok(channel) => {
                 if let Err(err) = channel
-                    .send_message(&ctx.http, self.ticket_type.ticket_msg())
+                    .send_message(
+                        &ctx.http,
+                        self.ticket_type
+                            .ticket_msg(config, interaction.user.id.get()),
+                    )
                     .await
                 {
                     eprintln!("Error sending ticket message: {err}")
                 }
                 self.channel = Some(channel);
             }
-            Err(_) => {
-                eprintln!("Failed to create ticket channel");
+            Err(why) => {
+                eprintln!("Failed to create ticket channel, err: {:?}", why);
                 return;
             }
         }
     }
+}
 
-    pub async fn create_transcript() -> String {
-        "Unimplemented".into()
-    }
+pub async fn create_transcript(channel: &ChannelId) -> String {
+    "Unimplemented".into()
 }
 
 pub enum TicketType {
@@ -105,7 +191,7 @@ pub enum TicketType {
 }
 
 impl TicketType {
-    pub fn ticket_msg(&self) -> CreateMessage {
+    pub fn ticket_msg(&self, config: &Config, creator_id: u64) -> CreateMessage {
         let mut embed = CreateEmbed::new().color(DISCORD_BACKGROUND_COLOR);
         let msg = CreateMessage::new();
         let close_button = CreateButton::new(TICKET_CLOSE_BUTTON)
@@ -151,7 +237,11 @@ impl TicketType {
             }
         }
 
-        msg.embed(embed).components(components)
+        let ticket_role_mention = format!("<@&{}>", config.ticket_role);
+        let user_mention = format!("<@{}>", creator_id);
+        msg.content(format!("{ticket_role_mention} {user_mention}"))
+            .embed(embed)
+            .components(components)
     }
 }
 
@@ -161,9 +251,12 @@ pub fn get_ticket_selection_menu() -> CreateActionRow {
             TICKET_CREATION_TYPE_SELECTION,
             CreateSelectMenuKind::String {
                 options: vec![
-                    CreateSelectMenuOption::new("🤙 Support", "support"),
-                    CreateSelectMenuOption::new("📕 Bewerbung", "application"),
-                    CreateSelectMenuOption::new("📍 Frage", "question"),
+                    CreateSelectMenuOption::new("Support", "support")
+                        .emoji(ReactionType::Unicode("🤙".into())),
+                    CreateSelectMenuOption::new("Bewerbung", "application")
+                        .emoji(ReactionType::Unicode("📕".into())),
+                    CreateSelectMenuOption::new("Frage", "question")
+                        .emoji(ReactionType::Unicode("📍".into())),
                 ],
             },
         )
