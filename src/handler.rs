@@ -1,5 +1,3 @@
-use std::path::Component;
-
 use serenity::{
     all::{Context, EventHandler, Interaction, Ready},
     async_trait,
@@ -7,7 +5,7 @@ use serenity::{
 
 use crate::{
     commands::{self},
-    config::{Config, TICKET_CREATION_TYPE_SELECTION},
+    config::Config,
     ticket,
 };
 
@@ -26,9 +24,9 @@ impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction {
             Interaction::Command(cmd) => commands::handle_cmd(&cmd, &ctx).await,
-            Interaction::Component(component) => {
+            Interaction::Component(mut component) => {
                 ticket::handle_ticket_button_interaction(&ctx, &component, &self.config).await;
-                ticket::handle_ticket_selection(&ctx, &component, &self.config).await;
+                ticket::handle_ticket_selection(&ctx, &mut component, &self.config).await;
             }
             _ => {}
         }

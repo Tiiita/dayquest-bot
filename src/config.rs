@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use figment::{
     providers::{Format, Json},
@@ -6,8 +6,6 @@ use figment::{
 };
 use serde::Deserialize;
 use serenity::all::Color;
-
-use crate::ticket::{self, Ticket};
 
 pub const DISCORD_BACKGROUND_COLOR: Color = Color::from_rgb(43, 45, 49);
 

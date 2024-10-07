@@ -1,10 +1,6 @@
 use serenity::all::{
-        ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionDataKind, Context,
-        CreateActionRow, CreateAttachment, CreateButton, CreateChannel, CreateEmbed,
-        CreateInteractionResponse, CreateInteractionResponseMessage, CreateMessage,
-        CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, GuildChannel, ReactionType,
-        UserId,
-    };
+    ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionDataKind, Context, CreateActionRow, CreateAttachment, CreateButton, CreateChannel, CreateEmbed, CreateInteractionResponse, CreateInteractionResponseMessage, CreateMessage, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, EditMessage, GuildChannel, ReactionType, User, UserId
+};
 
 use crate::config::{
     Config, DISCORD_BACKGROUND_COLOR, TICKET_CLOSE_BUTTON, TICKET_CREATION_TYPE_SELECTION,
@@ -51,25 +47,23 @@ pub async fn handle_ticket_button_interaction(
         let channel_id = &interaction.channel_id.get();
 
         if !config.open_tickets.contains_key(channel_id)
-            || config.open_tickets.get(channel_id) == None
-        {
-            eprintln!("Failed to find channel (in config) with id: {channel_id}");
-        }
-
-        let creator = *config.open_tickets.get(channel_id).unwrap();
-        if let Err(why) = ctx.http.get_user(UserId::new(creator)).await {
-            eprintln!("Failed to look up user that created the ticket, Err: {why}");
-            return;
-        }
-
-        let transcript = create_transcript(&interaction.channel_id).await;
-        let creator = ctx.http.get_user(UserId::new(creator)).await.unwrap();
-        if let Err(why) = creator.direct_message(&ctx.http, CreateMessage::new()
-                .content("Dein DayQuest Ticket wurde geschlossen. Hier das Transcript. **Wir empfehlen das zu lesen, da dort noch ungesehene Nachrichten vorkommen können**")
-                .add_file(CreateAttachment::bytes(transcript, "dein-transcript.txt")))
-                .await
-        {
-            eprintln!("Failed to send ticket close msg to user: {}, Err: {:?}", creator.id.get(), why);
+            || config.open_tickets.get(channel_id) == None {
+            eprintln!("Failed to find channel (in config) with id: {channel_id}, closing without transcript");
+        } else {
+            let creator = *config.open_tickets.get(channel_id).unwrap();
+            if let Err(why) = ctx.http.get_user(UserId::new(creator)).await {
+                eprintln!("Failed to look up user that created the ticket, Err: {why}");
+            }
+    
+            let transcript = create_transcript(&interaction.channel_id).await;
+            let creator = ctx.http.get_user(UserId::new(creator)).await.unwrap();
+            if let Err(why) = creator.direct_message(&ctx.http, CreateMessage::new()
+                    .content("Dein DayQuest Ticket wurde geschlossen. Hier das Transcript. **Wir empfehlen das zu lesen, da dort noch ungelese Nachrichten vorkommen können**")
+                    .add_file(CreateAttachment::bytes(transcript, "dein-transcript.txt")))
+                    .await
+            {
+                eprintln!("Failed to send ticket close msg to user: {}, Err: {:?}", creator.id.get(), why);
+            }
         }
 
         if let Err(why) = interaction.channel_id.delete(&ctx.http).await {
@@ -86,12 +80,23 @@ pub async fn handle_ticket_button_interaction(
 
 pub async fn handle_ticket_selection(
     ctx: &Context,
-    interaction: &ComponentInteraction,
+    interaction: &mut ComponentInteraction,
     config: &Config,
 ) {
     if interaction.data.custom_id.as_str() != TICKET_CREATION_TYPE_SELECTION {
         return;
     }
+
+    //Reset select menu
+    if let Err(why) = interaction
+        .message
+        .edit(
+            &ctx.http,
+            EditMessage::new().components(vec![get_ticket_selection_menu()])
+        ).await {
+        eprintln!("Failed to update ticket creation select menu, Err: {why}");
+    }
+
     if let ComponentInteractionDataKind::StringSelect { ref values } = interaction.data.kind {
         let selected = values.get(0).unwrap().as_str();
 
